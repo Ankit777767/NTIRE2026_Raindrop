@@ -1,0 +1,18 @@
+# .gitignore
+__pycache__/
+*.py[cod]
+*$py.class
+.vscode/
+
+# Datasets
+datasets/
+data/Ntire2026/
+
+# Models & Checkpoints
+checkpoints/
+*.pth
+*.ckpt
+
+# Logs
+wandb/
+logs/
