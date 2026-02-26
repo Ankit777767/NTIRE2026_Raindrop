@@ -17,19 +17,26 @@ class CharbonnierLoss(nn.Module):
 
 class EdgeLoss(nn.Module):
     """
-    Optional: Helps recover the sharp edges of the background.
+    Helps recover the sharp edges of the background.
+    Optimized for Multi-GPU environments.
     """
     def __init__(self):
         super(EdgeLoss, self).__init__()
         k = torch.Tensor([[.05, .25, .4, .25, .05]])
-        self.kernel = torch.matmul(k.t(), k).unsqueeze(0).repeat(3, 1, 1, 1)
-        if torch.cuda.is_available():
-            self.kernel = self.kernel.cuda()
+        # Create a 2D Gaussian kernel
+        kernel = torch.matmul(k.t(), k) 
+        # Reshape to (Out_Channels, In_Channels/Groups, H, W) -> (3, 1, 5, 5)
+        kernel = kernel.unsqueeze(0).unsqueeze(0).repeat(3, 1, 1, 1)
+        
+        # Register as a buffer so it automatically moves across GPUs in DataParallel
+        self.register_buffer('kernel', kernel)
+        
         self.loss = CharbonnierLoss()
 
     def conv_gauss(self, img):
         n_channels, _, kw, kh = self.kernel.shape
         img = torch.nn.functional.pad(img, (kw//2, kw//2, kh//2, kh//2), mode='replicate')
+        # Apply depthwise convolution using the registered buffer
         return torch.nn.functional.conv2d(img, self.kernel, groups=n_channels)
 
     def forward(self, x, y):
